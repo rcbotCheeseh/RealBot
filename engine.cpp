@@ -257,8 +257,9 @@ pfnMessageBegin(int msg_dest, int msg_type, const float *pOrigin, edict_t *edict
             botMsgIndex = -1;      // index of bot receiving message (none)
 
             if (mod_id == CSTRIKE_DLL) {
-                if (msg_type == GET_USER_MSG_ID(PLID, "HLTV", NULL))
+                if (msg_type == GET_USER_MSG_ID(PLID, "HLTV", NULL)) {
                     botMsgFunction = BotClient_CS_HLTV;
+                }
                 else if (msg_type == GET_USER_MSG_ID(PLID, "SayText", NULL))
                     botMsgFunction = BotClient_CS_SayText;
             }
@@ -385,13 +386,11 @@ void pfnWriteCoord(float flValue) {
 }
 
 void pfnWriteString(const char *sz) {
-
     if (Game.bEngineDebug) {
         char msg[256];
         sprintf(msg, "ENGINE: pfnWriteByte() - '%s'\n", sz);
         rblog(msg);
     }
-
 
     if (gpGlobals->deathmatch) {
         // Ditlew's Radio
@@ -507,8 +506,9 @@ void pfnWriteString(const char *sz) {
             strcpy(message, sz);   // copy message and handle at bot.cpp radio routine.
             radio_message = true;
             radio_message_from = false;
-        } else if (strcmp(sz, "#Game_radio") == 0)
+        } else if (strcmp(sz, "#Game_radio") == 0) {
             radio_message_start = true;
+        }
 
         // End Ditlew's Radio
 
@@ -518,8 +518,9 @@ void pfnWriteString(const char *sz) {
 
 
         // if this message is for a bot, call the client message function...
-        if (botMsgFunction)
+        if (botMsgFunction) {
             (*botMsgFunction)((void *) sz, botMsgIndex);
+        }
     }
 
     RETURN_META(MRES_IGNORED);

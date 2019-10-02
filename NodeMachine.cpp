@@ -2631,9 +2631,9 @@ void cNodeMachine::path_walk(cBot *pBot, float distanceMoved) {
 
     // Check if path is valid
     if (iPath[BotIndex][0] < 0) {
-        pBot->rprint("cNodeMachine::path_walk", "Finished - invalid path");
+        pBot->rprint("cNodeMachine::path_walk", "Bot has no path. ([0] path index < 0)");
         pBot->stopMoving();
-        return;                   // back out
+        return;
     }
 
     if (!pBot->shouldBeAbleToMove()) {
@@ -2903,8 +2903,13 @@ void cNodeMachine::path_walk(cBot *pBot, float distanceMoved) {
 
         if (strcmp(STRING(pEntityHit->v.classname), "player") == 0) {
             pBot->rprint_trace("cNodeMachine::path_walk", "Another player between me and next node.");
-            pBot->strafeRight(0.2);
-            return;
+            if (pBot->hasTimeToMoveToNode()) {
+                pBot->strafeRight(0.2);
+                pBot->rprint_trace("cNodeMachine::path_walk", "Time left to move to node, so lets try strafing to unstuck.");
+                return;
+            } else {
+                pBot->rprint_trace("cNodeMachine::path_walk", "No time left to move to node, so we continue and let stuck logic kick in");
+            }
         }
 
         pBot->rprint_trace("cNodeMachine::path_walk", "Finished - entity hit end block");
@@ -2922,6 +2927,7 @@ void cNodeMachine::path_walk(cBot *pBot, float distanceMoved) {
     double speedInOneTenthOfASecond = (pBot->f_move_speed * timeEvaluatingMoveSpeed) * fraction;
     double expectedMoveDistance = speedInOneTenthOfASecond;
     if (pBot->isFreezeTime()) expectedMoveDistance = 0;
+    if (pBot->isWalking()) expectedMoveDistance = speedInOneTenthOfASecond / 3.0;
     if (pBot->isDucking()) expectedMoveDistance = speedInOneTenthOfASecond / 3.0;
     if (pBot->isJumping()) expectedMoveDistance = speedInOneTenthOfASecond / 3.0;
     // no need for 'is walking' because walking time influence `f_move_speed` hence it is already taken care of
@@ -3004,11 +3010,13 @@ void cNodeMachine::ExecuteIsStuckLogic(cBot *pBot, int currentNodeToHeadFor, Vec
     edict_t *playerNearbyInFOV = NULL;
     edict_t *hostageNearbyInFOV = NULL;
     if (entityNearbyInFOV) {
-        if (strcmp(STRING(entityNearbyInFOV->v.classname), "player")) {
+
+        if (strcmp(STRING(entityNearbyInFOV->v.classname), "player") == 0) {
             playerNearbyInFOV = entityNearbyInFOV;
             pBot->rprint_trace("cNodeMachine::ExecuteIsStuckLogic", "A player is in front of me");
         }
-        if (strcmp(STRING(entityNearbyInFOV->v.classname), "hostage_entity")) {
+
+        if (strcmp(STRING(entityNearbyInFOV->v.classname), "hostage_entity") == 0) {
             hostageNearbyInFOV = entityNearbyInFOV;
             pBot->rprint_trace("cNodeMachine::ExecuteIsStuckLogic", "A hostage is in front of me");
         }
@@ -3571,10 +3579,11 @@ void cNodeMachine::path_think(cBot *pBot, float distanceMoved) {
                 if (pBot->vip) {
                     score = 0; // do not chase yourself
                 } else {
-                    // if distance is too big, go to it. (guard the VIP)
-                    int maxDistanceWeKeepToVIP = 500;
-                    float goalScore = maxDistanceWeKeepToVIP / fDistanceToGoal;
-                    score = (score + goalScore) / 2.0;
+                    score = 0; // don't care about VIP
+//                    // if distance is too big, go to it. (guard the VIP)
+//                    int maxDistanceWeKeepToVIP = 500;
+//                    float goalScore = maxDistanceWeKeepToVIP / fDistanceToGoal;
+//                    score = (score + goalScore) / 2.0;
                 }
             }
         }

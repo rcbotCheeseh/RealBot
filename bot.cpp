@@ -2101,10 +2101,11 @@ void cBot::CheckAround() {
     TraceResult tr;
     Vector v_source, v_left, v_right, v_forward, v_forwardleft, v_forwardright;
 
-    v_source = pEdict->v.origin + Vector(0, 0, -CROUCHED_HEIGHT + (MAX_JUMPHEIGHT + 1));
+//    v_source = pEdict->v.origin + Vector(0, 0, -CROUCHED_HEIGHT + (MAX_JUMPHEIGHT + 1));
+    v_source = pEdict->v.origin + Vector(0, 0, ORIGIN_HEIGHT);
 
     // Go forward first
-    float distance = 40;
+    float distance = 90;
     v_forward = v_source + gpGlobals->v_forward * distance;
 
     // now really go left/right
@@ -2151,20 +2152,20 @@ void cBot::CheckAround() {
     }
 
     if (!bHitForwardLeft && bHitForwardRight) {
-//        strafeLeft(0.1);
+        strafeLeft(0.5);
         rprint_trace("CheckAround", "Can strafe left (forward left)");
     } else if (bHitForwardLeft && !bHitForwardRight) {
-//        strafeRight(0.1);
+        strafeRight(0.5);
         rprint_trace("CheckAround", "Can strafe right (forward right)");
     }
 
     if (bHitLeft && bHitRight) {
         rprint_trace("CheckAround", "Can't strafe left or right");
     } else if (!bHitLeft && bHitRight) {
-        strafeLeft(0.1);
+        strafeLeft(0.5);
         rprint_trace("CheckAround", "Can strafe left");
     } else if (bHitLeft && !bHitRight) {
-        strafeRight(0.1);
+        strafeRight(0.5);
         rprint_trace("CheckAround", "Can strafe right");
     }
 
@@ -3258,16 +3259,7 @@ void cBot::Think() {
 
     // NEW ROUND
     if (Game.NewRound()) {
-        rblog("bot.cpp:3222, Game.NewRound\n");
-        NewRound();
-        Game.iProducedSentences = RANDOM_LONG(0, Game.iMaxSentences);
-        ChatEngine.fThinkTimer = gpGlobals->time + RANDOM_FLOAT(0.0, 0.5);
-
-        // clear all tasks of the bot
-
-        // New round started, broadcast EVENT on task stuff
-        // TODO TODO TODO
-        // Do memory stuff so we know what to do
+        rprint_trace("Think", "Game.NewRound");
     }
 
     // --------------------------------
@@ -3535,9 +3527,6 @@ void cBot::CheckGear() {
 
 // BOT: Update personal status
 void cBot::UpdateStatus() {
-    if (pEdict == NULL)
-        rblog("BOT: pEdict is NULL. Seriously something wrong?");
-
     // name filled in yet?
     if (name[0] == 0)
         strcpy(name, STRING(pEdict->v.netname));
@@ -3571,9 +3560,9 @@ void cBot::UpdateStatus() {
     // Set max speed and such when CS 1.6
     if (counterstrike == 1) {
         f_max_speed = pEdict->v.maxspeed;
-        char msg[255];
-        sprintf(msg, "f_max_speed set to %f", f_max_speed);
-        rprint_trace("UpdateStatus", msg);
+//        char msg[255];
+//        sprintf(msg, "f_max_speed set to %f", f_max_speed);
+//        rprint_trace("UpdateStatus", msg);
         bot_health = (int) pEdict->v.health;
         bot_armor = (int) pEdict->v.armorvalue;
     }
@@ -3704,12 +3693,14 @@ bool BotRadioAction() {
                     }
                     // Enemy Down!
                     if (strstr(message, "#Enemy_down") != NULL) {
+                        BotPointer->rprint_trace("BotRadioAction", "Understood Enemy down - no logic");
 
                         unstood = true;
                         can_do_negative = false;
                     }
                     // Stick together team!
                     if (strstr(message, "#Stick_together_team") != NULL) {
+                        BotPointer->rprint_trace("BotRadioAction", "Understood Stick together team - no logic");
                         unstood = true;
                         // TODO: Find someone to follow. (to stick with)
                     }
@@ -3717,6 +3708,7 @@ bool BotRadioAction() {
 
                     // Need backup / taking fire...
                     if (strstr(message, "#Need_backup") != NULL || strstr(message, "#Taking_fire") != NULL) {
+                        BotPointer->rprint_trace("BotRadioAction", "Understood Need backup or Taking fire");
 
                         unstood = true;
 
@@ -3724,7 +3716,7 @@ bool BotRadioAction() {
                         int iBackupNode = NodeMachine.getClosestNode(plr->v.origin, NODE_ZONE, plr);
 
                         if (iBackupNode > -1) {
-                            BotPointer->rprint("Setting goal for backup");
+                            BotPointer->rprint_trace("BotRadioAction", "Found node nearby player who requested backup/reported taking fire.");
                             BotPointer->setGoalNode(iBackupNode);
                             BotPointer->forgetPath();
                             BotPointer->f_camp_time = gpGlobals->time - 1;
@@ -3738,11 +3730,15 @@ bool BotRadioAction() {
                         // unstood = true;
                     }
                     // Team fall back!
-                    if (strstr(message, "#Team_fall_back") != NULL) {}
+                    if (strstr(message, "#Team_fall_back") != NULL) {
+
+                    }
                     // Go GO Go, stop camping, stop following, get the heck out of there!
                     if (strstr(message, "#Go_go_go") != NULL) {
+                        BotPointer->rprint_trace("BotRadioAction", "Understood Go Go Go");
                         unstood = true;
                         BotPointer->f_camp_time = gpGlobals->time - 30;
+                        BotPointer->f_walk_time = gpGlobals->time;
                         BotPointer->f_cover_time = gpGlobals->time - 10;
                         BotPointer->f_hold_duck = gpGlobals->time - 10;
                         BotPointer->f_jump_time = gpGlobals->time - 10;
@@ -3751,8 +3747,9 @@ bool BotRadioAction() {
                     }
 
                     if ((FUNC_DoRadio(BotPointer)) && (unstood)) {
-                        if (BotPointer->console_nr == 0
-                            && radios < (gpGlobals->maxClients / 4)) {
+                        int maxAllowedRadios = gpGlobals->maxClients / 4;
+                        if (BotPointer->console_nr == 0 && radios < maxAllowedRadios) {
+
                             if (!report_back) {
                                 UTIL_BotRadioMessage(BotPointer, 3, "1", "");   // Roger that!
                             } else {
@@ -4277,6 +4274,14 @@ bool cBot::isDucking() {
     bool b = keyPressed(IN_DUCK) || this->f_hold_duck > gpGlobals->time;
     if (b) {
         rprint_trace("isDucking", "Yes I am ducking");
+    }
+    return b;
+}
+
+bool cBot::isWalking() {
+    bool b = !keyPressed(IN_RUN) || this->f_walk_time > gpGlobals->time;
+    if (b) {
+        rprint_trace("isWalking", "Yes I am walking");
     }
     return b;
 }
